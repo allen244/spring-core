@@ -1,21 +1,24 @@
-package com.avs.services.jpaservices;
-
+package com.avs.services.reposervices;
 import com.avs.domain.User;
+import com.avs.repositories.UserRepository;
 import com.avs.services.UserService;
 import com.avs.services.security.EncryptionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by jt on 12/14/15.
+ * Created by jt on 12/21/15.
  */
 @Service
-@Profile("jpadao")
-public class UserServiceJpaDaoImpl extends AbstractJpaDaoService implements UserService {
+@Profile("springdatajpa")
+public class UserServiceRepoImpl implements UserService {
+
+    private UserRepository userRepository;
 
     private EncryptionService encryptionService;
 
@@ -24,49 +27,41 @@ public class UserServiceJpaDaoImpl extends AbstractJpaDaoService implements User
         this.encryptionService = encryptionService;
     }
 
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     @Override
     public List<?> listAll() {
-        EntityManager em = emf.createEntityManager();
-
-        return em.createQuery("from User", User.class).getResultList();
+        List<User> users = new ArrayList<>();
+        userRepository.findAll().forEach(users::add); //fun with Java 8
+        return users;
     }
 
     @Override
     public User getById(Integer id) {
-        EntityManager em = emf.createEntityManager();
-
-        return em.find(User.class, id);
+        return userRepository.findOne(id);
     }
+
 
     @Override
     public User saveOrUpdate(User domainObject) {
-        EntityManager em = emf.createEntityManager();
-
-        em.getTransaction().begin();
 
         if(domainObject.getPassword() != null){
             domainObject.setEncryptedPassword(encryptionService.encryptString(domainObject.getPassword()));
         }
-
-        User saveduser = em.merge(domainObject);
-        em.getTransaction().commit();
-
-        return saveduser;
+        return userRepository.save(domainObject);
     }
+
 
     @Override
     public void delete(Integer id) {
-        EntityManager em = emf.createEntityManager();
-
-        em.getTransaction().begin();
-        em.remove(em.find(User.class, id));
-        em.getTransaction().commit();
+        userRepository.delete(id);
     }
 
     @Override
     public User findByUserName(String userName) {
-        EntityManager em = emf.createEntityManager();
-
-        return em.createQuery("from User where username = :userName", User.class).getSingleResult();
+        return userRepository.findByUsername(userName);
     }
 }
